@@ -22,6 +22,7 @@ class Block(nn.Module):
         """
         if len(inputs) > 1:
             x = torch.cat(inputs, dim=-1)
+            #print('xshape:',x.shape)
         else:
             x = inputs[0]
         return self.block_eval(x)
@@ -76,7 +77,39 @@ class Network(Block):
             x = nlin(lin(x))
         return x        
             
+
+class ParaNet(nn.Module):
+
+    def __init__(self,
+                  input_size,
+                  output_size):
+        super(ParaNet, self).__init__()
+        self.net = nn.Linear(input_size,output_size)
+
+    def forward(self,*inputs):
+        #print(inputs)
+        if len(inputs) > 1:
+            x = torch.cat(inputs, dim=-1)
+            #print('xshape:',x.shape)
+        else:
+            x = inputs[0]
+        out = self.net(x)
+        return out
     
+
+class ConcatNet(nn.Module):
+    
+    def __init__(self, net1,net2):
+        super(ConcatNet,self).__init__()
+        self.net1 = net1
+        self.net2 = net2
+    
+    def forward(self,x):
+        out = self.net1(x)
+        out = self.net2(out)
+        return out
+        
+
 
             
 

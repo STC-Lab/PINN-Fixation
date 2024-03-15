@@ -1,3 +1,4 @@
 import torch
 
-print(torch.zeros(3,1))
+model = torch.load('./model/model_parameter.pkl')
+print(model.state_dict())
