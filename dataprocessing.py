@@ -4,6 +4,7 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.dataloader import default_collate
+from sklearn.model_selection import train_test_split
 
 def load_data(file):
     data = loadmat(file) 
@@ -31,12 +32,24 @@ def reshape_data(x,t,u):
 
 def select_data(total_points,Nf,X_test,T_test,U_test):
     id_f = np.random.choice(total_points, Nf, replace=False)# Randomly chosen points for Interior
+    print(id_f)
     X_train_Nu = X_test[id_f]
     T_train_Nu = T_test[id_f]
     U_train_Nu = U_test[id_f]
     print("We have",total_points,"points. We will select",X_train_Nu.shape[0],"points to train our model.")
     return X_train_Nu,T_train_Nu,U_train_Nu
 
+
+
+def split_data(dataset):
+    train, temp_data = train_test_split(dataset, test_size=0.3)
+    val,test = train_test_split(temp_data,test_size=0.33)
+    return train,val,test
+
+
+def data_physics(dataset):
+    data_point,physics_point = train_test_split(dataset,test_size=0.5)
+    return data_point,physics_point
 
 class DictDataset(Dataset):
     """
