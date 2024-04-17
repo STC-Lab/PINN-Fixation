@@ -33,11 +33,14 @@ def reshape_data(x,t,u):
 def select_data(total_points,Nf,X_test,T_test,U_test):
     id_f = np.random.choice(total_points, Nf, replace=False)# Randomly chosen points for Interior
     print(id_f)
-    X_train_Nu = X_test[id_f]
-    T_train_Nu = T_test[id_f]
-    U_train_Nu = U_test[id_f]
-    print("We have",total_points,"points. We will select",X_train_Nu.shape[0],"points to train our model.")
-    return X_train_Nu,T_train_Nu,U_train_Nu
+    X_data_Nu = X_test[id_f]
+    T_data_Nu = T_test[id_f]
+    U_data_Nu = U_test[id_f]
+    # X_physics_Nu =  [item for item in X_test if item not in X_data_Nu]
+    # T_physics_Nu =  [item for item in T_test if item not in T_data_Nu]
+    # U_physics_Nu =  [item for item in U_test if item not in U_data_Nu]
+    print("We have",total_points,"points. We will select",X_data_Nu.shape[0],"data points and to train our model.")
+    return X_data_Nu,T_data_Nu,U_data_Nu
 
 
 
@@ -46,6 +49,18 @@ def split_data(dataset):
     val,test = train_test_split(temp_data,test_size=0.33)
     return train,val,test
 
+def full_data(total_points,Nf,X_test,T_test,U_test):
+    id = list(range(0, total_points))
+    id_f = np.random.choice(total_points, Nf, replace=False)# Randomly chosen points for Interior
+    id_p = [x for x in id if x not in id_f]
+    X_train_Nu = X_test[id_f]
+    T_train_Nu = T_test[id_f]
+    U_train_Nu = U_test[id_f]
+    X_physics_data = X_test[id_p]
+    T_physics_data = T_test[id_p]
+    U_physics_data = U_test[id_p]
+    print("We have",total_points,"points. We will select",X_train_Nu.shape[0],"points to train our model.")
+    return X_train_Nu,T_train_Nu,U_train_Nu,X_physics_data,T_physics_data,U_physics_data
 
 def data_physics(dataset):
     data_point,physics_point = train_test_split(dataset,test_size=0.5)

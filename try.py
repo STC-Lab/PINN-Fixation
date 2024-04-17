@@ -53,6 +53,7 @@ x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
 total_points=len(x[0])*len(t[0])
+
 Nf =  1600 # Nf: Number of collocation points 
 X_data_tensor,T_data_tensor,U_data_tensor = dataprocessing.select_data(total_points,Nf,X_test,T_test,U_test)
 

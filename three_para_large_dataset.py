@@ -36,7 +36,7 @@ def plotdataphysics(x_data,t_data,x_physics,t_physics):
     plt.scatter(x_data.detach().numpy(), t_data.detach().numpy(),s=4., c='blue', marker='o', label='Data points')
     plt.scatter(x_physics.detach().numpy(), t_physics.detach().numpy(),s=4., c='red', marker='o', label='Physics points')
     plt.title('Samples of the PDE solution y(x,t) for training')
-    plt.xlim(0., 2.)
+    plt.xlim(0., 1.)
     plt.ylim(0., 1.)
     plt.grid(True)
     plt.xlabel('x')
@@ -45,27 +45,34 @@ def plotdataphysics(x_data,t_data,x_physics,t_physics):
     plt.show()
     plt.show(block=True)
 
-
+torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
+np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset/dataset_3.5_6.7_8.5_2_1.mat'
+file = './dataset/3para_3.5_6.7_8.5_sinpix.mat'
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
 total_points=len(x[0])*len(t[0])
-Nf =  1600 # Nf: Number of collocation points 
-X_data_tensor,T_data_tensor,U_data_tensor = dataprocessing.select_data(total_points,Nf,X_test,T_test,U_test)
+print('The dataset has',total_points,'points')
+ 
+
+#Selection of dataset
+#Nf = 2000
+# X_data_tensor,T_data_tensor,U_data_tensor = dataprocessing.select_data(total_points,Nf,X_test,T_test,U_test)
+
+#Entire dataset training
+Nf =  int(total_points/2) # Nf: Number of collocation points
+X_data_tensor,T_data_tensor,U_data_tensor,X_physics_tensor,T_physics_tensor,U_physics_tensor = dataprocessing.full_data(total_points,Nf,X_test,T_test,U_test)
+
+# t_physics = torch.linspace(0,1,60).view(-1,1)
+# x_physics = torch.linspace(0,1,60).view(-1,1)
+# X_physics,T_physics = np.meshgrid(x_physics,t_physics)
+# X_physics_tensor = torch.tensor(X_physics, dtype=torch.float32).view(-1,1)
+# T_physics_tensor = torch.tensor(T_physics, dtype=torch.float32).view(-1,1)
 
 
-
-t_physics = torch.linspace(0,1,40).view(-1,1)
-x_physics = torch.linspace(0,2,40).view(-1,1)
-X_physics,T_physics = np.meshgrid(x_physics,t_physics)
-X_physics_tensor = torch.tensor(X_physics, dtype=torch.float32).view(-1,1)
-T_physics_tensor = torch.tensor(T_physics, dtype=torch.float32).view(-1,1)
-
-
-plotdataphysics(X_data_tensor,T_data_tensor,X_physics_tensor,T_physics_tensor)
+#plotdataphysics(X_data_tensor,T_data_tensor,X_physics_tensor,T_physics_tensor)
 
 X_data_tensor.requires_grad = True
 T_data_tensor.requires_grad = True
@@ -95,11 +102,15 @@ gams = []
 
 # add mu to the optimiser
 # TODO: write code here
+# optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
 optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
 writer = SummaryWriter()
 
-
-for i in range(40001):
+theta = 0.05
+loss = 1
+i = 0
+# for i in range(30001):
+while loss > theta:
     
     optimiser.zero_grad()
     
@@ -113,8 +124,8 @@ for i in range(40001):
     dudt = torch.autograd.grad(physic_output, T_physics_tensor, torch.ones_like(physic_output), create_graph=True)[0]
     dudx = torch.autograd.grad(physic_output, X_physics_tensor, torch.ones_like(physic_output), create_graph=True)[0]
     d2udx2 = torch.autograd.grad(dudx, X_physics_tensor, torch.ones_like(dudx), create_graph=True)[0]
+    # loss1 = torch.mean((alpha*d2udx2+beta*dudx+gamma*physic_output-dudt)**2)
     loss1 = torch.mean((alpha*d2udx2+beta*dudx+gamma*physic_output-dudt)**2)
-    
     # compute data loss
     # TODO: write code here
     data_input = [X_data_tensor,T_data_tensor]
@@ -132,6 +143,9 @@ for i in range(40001):
     bets.append(beta.item())
     gams.append(gamma.item())
     writer.add_scalar('train_loss',loss,i)
+    writer.add_scalar('alpha',alpha.item(),i)
+    writer.add_scalar('beta',beta.item(),i)
+    writer.add_scalar('gamma',gamma.item(),i)
     # plot the result as training progresses
     if i % 500 == 0: 
         # u = pinn(t_test).detach()
@@ -142,6 +156,7 @@ for i in range(40001):
         # plt.legend()
         # plt.show()
         print(f'epoch: {i}  train loss :{loss}' )
+    i = i+1
         
 plt.figure()
 plt.title("alpha")
