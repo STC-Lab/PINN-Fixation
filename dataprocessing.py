@@ -5,6 +5,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.dataloader import default_collate
 from sklearn.model_selection import train_test_split
+import pyDOE 
 
 def load_data(file):
     data = loadmat(file) 
@@ -30,7 +31,7 @@ def reshape_data(x,t,u):
     return x_test,t_test,u_test
 
 
-def select_data(total_points,Nf,X_test,T_test,U_test):
+def select_random_data(total_points,Nf,X_test,T_test,U_test):
     id_f = np.random.choice(total_points, Nf, replace=False)# Randomly chosen points for Interior
     print(id_f)
     X_data_Nu = X_test[id_f]
@@ -44,10 +45,34 @@ def select_data(total_points,Nf,X_test,T_test,U_test):
 
 
 
-def split_data(dataset):
-    train, temp_data = train_test_split(dataset, test_size=0.3)
-    val,test = train_test_split(temp_data,test_size=0.33)
-    return train,val,test
+def select_lhs_data(total_points,Nf,X_test,T_test,U_test):
+    id_f = pyDOE.lhs(2)# Randomly chosen points for Interior
+    print(id_f)
+    X_data_Nu = X_test[id_f]
+    T_data_Nu = T_test[id_f]
+    U_data_Nu = U_test[id_f]
+    return X_data_Nu,T_data_Nu,U_data_Nu
+
+
+
+def split_data(X_data_tensor,T_data_tensor,U_data_tensor,X_physics_tensor,T_physics_tensor,U_physics_tensor, Nf):
+    total_points_v = len(X_data_tensor)
+    id = list(range(0, total_points_v))
+    id_v = np.random.choice(total_points_v, Nf, replace=False)# Randomly chosen points for Interior
+    id_t = [x for x in id if x not in id_v]
+    X_data_tensor_train = X_data_tensor[id_t]
+    T_data_tensor_train = T_data_tensor[id_t]
+    U_data_tensor_train = U_data_tensor[id_t]
+    X_physics_tensor_train = X_physics_tensor[id_t]
+    T_physics_tensor_train = T_physics_tensor[id_t]
+    U_physics_tensor_train = U_physics_tensor[id_t]
+    X_data_tensor_val = X_data_tensor[id_v]
+    T_data_tensor_val = T_data_tensor[id_v]
+    U_data_tensor_val = U_data_tensor[id_v]
+    X_physics_tensor_val = X_physics_tensor[id_v]
+    T_physics_tensor_val = T_physics_tensor[id_v]
+    U_physics_tensor_val = U_physics_tensor[id_v]
+    return X_data_tensor_train,X_data_tensor_val,T_data_tensor_train,T_data_tensor_val,U_data_tensor_train,U_data_tensor_val,X_physics_tensor_train,X_physics_tensor_val,T_physics_tensor_train,T_physics_tensor_val,U_physics_tensor_train,U_physics_tensor_val
 
 def full_data(total_points,Nf,X_test,T_test,U_test):
     id = list(range(0, total_points))
