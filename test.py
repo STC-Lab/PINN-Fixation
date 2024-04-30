@@ -4,9 +4,6 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-#Test the trained model
-#Visualize the prediction results
 class FCN(nn.Module):
     "Defines a standard fully-connected network in PyTorch"
     
@@ -53,10 +50,12 @@ def plot3D(X, T, y):
     plt.show()
 
 
+#17260426.pkl  3matrix_2-5_3-6_4-7.mat
+#16420430.pkl  3.5-5.5_6.7-0_8.5-0.mat
+#18430430.pkl  3.5-5.5_6.7-4.7_8.5-0.mat
+model = torch.load('E:\yhy_files\graduation\code\PINN1.0\model/18430430.pkl')       
 
-model = torch.load('E:\yhy_files\graduation\code\PINN1.0\model/15460424.pkl')
-
-file = './dataset/3matrix_5-5_6-6_7-7.mat'
+file = './dataset/3.5-5.5_6.7-4.7_8.5-0.mat'
 x,t,u1,u2 = dataprocessing.load_matrix(file)
 X,T,U1,U2 = dataprocessing.matrix_totensor(x,t,u1,u2)
 X_test,T_test,U1_test,U2_test = dataprocessing.reshape_matrix(X,T,U1,U2)
