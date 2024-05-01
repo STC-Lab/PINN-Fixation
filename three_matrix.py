@@ -59,7 +59,7 @@ class FCN_2output(nn.Module):
 
 torch.manual_seed(1234)
 # first, create some noisy observational data
-file = './dataset/3.5-5.5_6.7-4.7_8.5-0.mat'
+file = './dataset/3.5-5.5_8.5-12.5.mat'
 x,t,u1,u2 = dataprocessing.load_matrix(file)
 X,T,U1,U2 = dataprocessing.matrix_totensor(x,t,u1,u2)
 X_test,T_test,U1_test,U2_test = dataprocessing.reshape_matrix(X,T,U1,U2)
@@ -104,7 +104,7 @@ pinn = FCN(2,2,32,2)
 # gamma2 = torch.nn.Parameter(torch.ones(1, requires_grad=True))
 
 alpha = torch.nn.Parameter(torch.randn(2), requires_grad=True)
-beta = torch.nn.Parameter(torch.randn(2), requires_grad=True)
+# beta = torch.nn.Parameter(torch.randn(2), requires_grad=True)
 gamma = torch.nn.Parameter(torch.randn(2), requires_grad=True)
 
 # alpha1 = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
@@ -116,15 +116,15 @@ gamma = torch.nn.Parameter(torch.randn(2), requires_grad=True)
 
 alps1 = []
 alps2 = []
-bets1 = []
-bets2 = []
+# bets1 = []
+# bets2 = []
 gams1 = []
 gams2 = []
 
 
 # add mu to the optimiser
 # TODO: write code here
-optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=0.001)
+optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[gamma],lr=0.001)
 writer = SummaryWriter()
 
 theta = 0.01
@@ -141,7 +141,7 @@ try:
         
         # compute each term of the PINN loss function above
         # using the following hyperparameters:
-        lambda1 = 1e4
+        lambda1 = 1e7
         
         # compute physics loss
         physics_input = [X_physics_tensor,T_physics_tensor]
@@ -156,7 +156,7 @@ try:
         d2u1dx2 = torch.autograd.grad(du1dx, X_physics_tensor, torch.ones_like(du1dx), create_graph=True)[0]
         d2u2dx2 = torch.autograd.grad(du2dx, X_physics_tensor, torch.ones_like(du2dx), create_graph=True)[0]
         # loss1 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2+(alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
-        loss1 = torch.mean((alpha[0]*d2u1dx2+beta[0]*du1dx+gamma[0]*physic_output1-du1dt)**2+(alpha[1]*d2u2dx2+beta[1]*du2dx+gamma[1]*physic_output1-du2dt)**2)
+        loss1 = torch.mean((alpha[0]*d2u1dx2+gamma[0]*physic_output1-du1dt)**2+(alpha[1]*d2u2dx2+gamma[1]*physic_output1-du2dt)**2)
         # loss11 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2)
         # loss12 = torch.mean((alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
         writer.add_scalar('loss1',loss1,i)
@@ -185,15 +185,15 @@ try:
         # TODO: write code here
         alps1.append(alpha[0].item())
         alps2.append(alpha[1].item())
-        bets1.append(beta[0].item())
-        bets2.append(beta[1].item())
+        # bets1.append(beta[0].item())
+        # bets2.append(beta[1].item())
         gams1.append(gamma[0].item())
         gams2.append(gamma[1].item())
         writer.add_scalar('train_loss',loss,i)
         writer.add_scalar('alpha1',alpha[0],i)
         writer.add_scalar('alpha2',alpha[1],i)
-        writer.add_scalar('beta1',beta[0],i)
-        writer.add_scalar('beta2',beta[1],i)
+        # writer.add_scalar('beta1',beta[0],i)
+        # writer.add_scalar('beta2',beta[1],i)
         writer.add_scalar('gamma1',gamma[0],i)
         writer.add_scalar('gamma2',gamma[1],i)
         # plot the result as training progresses
@@ -205,14 +205,15 @@ try:
             # plt.title(f"Training step {i}")
             # plt.legend()
             # plt.show()
-            print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},beta:{beta[0].item(),beta[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
+            # print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},beta:{beta[0].item(),beta[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
+             print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
         i = i+1
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
 
         
-torch.save(pinn,"./model/18430430.pkl.")
+torch.save(pinn,"./model/00540502.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
@@ -233,21 +234,21 @@ plt.legend()
 plt.xlabel("Training step")
 plt.show()
 
-plt.figure()
-plt.title("beta_1")
-plt.plot(bets1, label="PINN estimate")
-plt.hlines(6.7, 0, len(bets1), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
+# plt.figure()
+# plt.title("beta_1")
+# plt.plot(bets1, label="PINN estimate")
+# plt.hlines(4.7, 0, len(bets1), label="True value", color="tab:green")
+# plt.legend()
+# plt.xlabel("Training step")
+# plt.show()
 
-plt.figure()
-plt.title("beta_2")
-plt.plot(bets2, label="PINN estimate")
-plt.hlines(4.7, 0, len(bets2), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
+# plt.figure()
+# plt.title("beta_2")
+# plt.plot(bets2, label="PINN estimate")
+# plt.hlines(4.7, 0, len(bets2), label="True value", color="tab:green")
+# plt.legend()
+# plt.xlabel("Training step")
+# plt.show()
 
 plt.figure()
 plt.title("gamma_1")
@@ -260,7 +261,7 @@ plt.show()
 plt.figure()
 plt.title("gamma_2")
 plt.plot(gams2, label="PINN estimate")
-plt.hlines(0, 0, len(gams2), label="True value", color="tab:green")
+plt.hlines(12.5, 0, len(gams2), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
