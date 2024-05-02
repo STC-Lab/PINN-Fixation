@@ -1,5 +1,7 @@
 # May 2nd,2024
 
-1. The matlab function which used to make dataset seems can only solve the PDE with second derivate and the solution u, if we use add the first deriavete to PDE, the dataset is not accurate which leads to inaccuarate results of network. 
-2. If we have two diagonal matrces parameters alpha and gamma in the PDE with the size of 2*2, the network can find the parameters when the gamma[2][2] equals zero. But the approximate solution u_hat from the network seems same as the true solution(see the file results). I think probably can also try least square find the parameters.
-3. Can't find a good toobox to solve PDE with parameters full matrix for now, so it's hard to make dataset. But it can make dataset with the sapcial items x in the matrix. I can try to solve that next step.
+1. The MATLAB function used for generating datasets can only solve PDEs with second derivatives and the solution \( u \). When we add the first derivative to the PDE, the dataset becomes inaccurate, leading to inaccurate results from the network.
+
+2. In a PDE with two diagonal matrix parameters \( \alpha \) and \( \gamma \) of size 2*2, the network can find the parameters when \( \gamma[2][2] \) equals zero. However, the approximate solution \( \hat{u} \) from the network appears to be the same as the true solution (refer to the file "results"). I believe it might be worth trying least squares to find the parameters.
+
+3. Currently, I haven't found a suitable toolbox to solve PDEs with full matrix parameters, making it difficult to generate datasets. However, datasets can be generated with special items \( x \) in the matrix. I will attempt to solve this in the next step.
