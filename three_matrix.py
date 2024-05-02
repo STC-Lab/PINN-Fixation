@@ -117,7 +117,8 @@ U1_data_tensor.requires_grad = True
 U2_data_tensor.requires_grad = True
 X_physics_tensor.requires_grad = True
 T_physics_tensor.requires_grad = True
-
+X_bc_left_tensor.requires_grad = True
+X_bc_right_tensor.requires_grad = True
 
 # plotdataphysics(X_data_tensor,T_data_tensor,X_physics_tensor,T_physics_tensor)
 
@@ -209,18 +210,36 @@ try:
 
 
         #Initial Condition
-        physics_input = [X_ic_tensor,T_ic_tensor]
-        physic_output = pinn(physics_input)
-        physic_output1 = physic_output[:, 0].view(-1, 1)
-        physic_output2 = physic_output[:, 1].view(-1, 1)
-        loss3 = torch.mean((physic_output1-np.sin(0.5*np.pi*X_ic_tensor))**2+(physic_output2-np.sin(0.5*np.pi*X_ic_tensor))**2)
+        ic_input = [X_ic_tensor,T_ic_tensor]
+        ic_output = pinn(ic_input)
+        ic_output1 = ic_output[:, 0].view(-1, 1)
+        ic_output2 = ic_output[:, 1].view(-1, 1)
+        loss3 = torch.mean((ic_output1-np.sin(0.5*np.pi*X_ic_tensor))**2+(ic_output2-np.sin(0.5*np.pi*X_ic_tensor))**2)
         writer.add_scalar('loss3',loss3,i)
+
+
+        #Boundry Condition
+        bc_input_left = [X_bc_left_tensor,T_bc_tensor]
+        bc_output_left = pinn(bc_input_left)
+        bc_left_output1 = bc_output_left[:, 0].view(-1, 1)
+        bc_left_output2 = bc_output_left[:, 1].view(-1, 1)
+        bc_input_right = [X_bc_right_tensor,T_bc_tensor]
+        bc_output_right = pinn(bc_input_right)
+        bc_right_output1 = bc_output_right[:, 0].view(-1, 1)
+        bc_right_output2 = bc_output_right[:, 1].view(-1, 1)
+        du2dx_bc = torch.autograd.grad(bc_left_output2, X_bc_left_tensor, torch.ones_like(bc_left_output2), create_graph=True)[0]
+        du1dx_bc = torch.autograd.grad(bc_right_output1, X_bc_right_tensor, torch.ones_like(bc_right_output1), create_graph=True)[0]
+
+        loss4 = torch.mean((bc_left_output1)**2)+torch.mean((bc_right_output2-1)**2)+torch.mean((du2dx_bc)**2)+torch.mean((du1dx_bc)**2)
+        writer.add_scalar('loss4',loss4,i)
+
+        
 
 
         # backpropagate joint loss, take optimiser step
         # loss1 = loss11 + lambda1*loss21
         # loss2 = loss12 + lambda1*loss22
-        loss = loss1 + lambda1*(loss2+loss3)
+        loss = loss1 + lambda1*(loss2+loss3+loss4)
         loss.backward()
         optimiser.step()
         
@@ -256,7 +275,7 @@ except KeyboardInterrupt:
 
 
         
-torch.save(pinn,"./model/18010502.pkl.")
+torch.save(pinn,"./model/19290502.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
@@ -304,7 +323,7 @@ plt.show()
 plt.figure()
 plt.title("gamma_2")
 plt.plot(gams2, label="PINN estimate")
-plt.hlines(0, 0, len(gams2), label="True value", color="tab:green")
+plt.hlines(12.5, 0, len(gams2), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
