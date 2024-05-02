@@ -1,4 +1,7 @@
-# May 2nd,2024
+# Plan of May
+![](Plan_of_May.png)
+
+## May 2nd,2024
 
 1. The MATLAB function used for generating datasets can only solve PDEs with second derivatives and the solution \( u \). When we add the first derivative to the PDE, the dataset becomes inaccurate, leading to inaccurate results from the network.
 
