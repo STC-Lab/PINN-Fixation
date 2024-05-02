@@ -7,6 +7,8 @@ from torch.utils.tensorboard import SummaryWriter
 from scipy.io import loadmat
 import dataprocessing
 import time
+import numpy as np
+from pyDOE import lhs
 
 
 class FCN(nn.Module):
@@ -65,11 +67,13 @@ X,T,U1,U2 = dataprocessing.matrix_totensor(x,t,u1,u2)
 X_test,T_test,U1_test,U2_test = dataprocessing.reshape_matrix(X,T,U1,U2)
 total_points=len(x[0])*len(t[0])
 print('The dataset has',total_points,'points')
-# Nf =  10 # Nf: Number of collocation points 
-Nf =  int(total_points/2)
-X_data_tensor,T_data_tensor,U1_data_tensor,U2_data_tensor,X_physics_tensor,T_physics_tensor,U1_physics_tensor,U2_physics_tensor = dataprocessing.full_data_matrix(total_points,Nf,X_test,T_test,U1_test,U2_test)
+Nf =  8100 # Nf: Number of collocation points 
+X_data_tensor,T_data_tensor,U1_data_tensor,U2_data_tensor = dataprocessing.full_data_matrix(total_points,Nf,X_test,T_test,U1_test,U2_test)
+# Nf =  int(total_points/2)
+# X_data_tensor,T_data_tensor,U1_data_tensor,U2_data_tensor,X_physics_tensor,T_physics_tensor,U1_physics_tensor,U2_physics_tensor = dataprocessing.full_data_matrix(total_points,Nf,X_test,T_test,U1_test,U2_test)
 
 
+#Linspace sampling
 # Nf = 2500
 # X_data_tensor,T_data_tensor,U1_data_tensor,U2_data_tensor = dataprocessing.select_random_matrix_data(total_points,Nf,X_test,T_test,U1_test,U2_test)
 # t_physics = torch.linspace(0,1,50).view(-1,1)
@@ -77,6 +81,34 @@ X_data_tensor,T_data_tensor,U1_data_tensor,U2_data_tensor,X_physics_tensor,T_phy
 # X_physics,T_physics = np.meshgrid(x_physics,t_physics)
 # X_physics_tensor = torch.tensor(X_physics, dtype=torch.float32).view(-1,1)
 # T_physics_tensor = torch.tensor(T_physics, dtype=torch.float32).view(-1,1)
+
+#Add Latin hyper cube sampling
+num_samples = 90
+parameter_ranges = np.array([[0, 1], [0, 1]])
+samples = lhs(2, samples=num_samples, criterion='maximin', iterations=1000)
+for i in range(2):
+    samples[:, i] = samples[:, i] * (parameter_ranges[i, 1] - parameter_ranges[i, 0]) + parameter_ranges[i, 0]
+x_samples = samples[:, 0]
+t_samples = samples[:, 1]
+X_physics,T_physics = np.meshgrid(x_samples,t_samples)
+X_physics_tensor = torch.tensor(X_physics, dtype=torch.float32).view(-1,1)
+T_physics_tensor = torch.tensor(T_physics, dtype=torch.float32).view(-1,1)
+
+
+#IC
+T_zero = np.zeros(90)
+X_ic,T_ic = np.meshgrid(x_samples,T_zero)
+X_ic_tensor = torch.tensor(X_ic, dtype=torch.float32).view(-1,1)
+T_ic_tensor = torch.tensor(T_ic, dtype=torch.float32).view(-1,1)
+#BC
+X_zero = np.zeros(90)
+X_one = np.ones(90)
+X_bc_left,T_bc = np.meshgrid(X_zero,t_samples)
+X_bc_left_tensor = torch.tensor(X_bc_left, dtype=torch.float32).view(-1,1)
+T_bc_tensor = torch.tensor(T_bc, dtype=torch.float32).view(-1,1)
+X_bc_right,T_bc = np.meshgrid(X_one,t_samples)
+X_bc_right_tensor = torch.tensor(X_bc_right, dtype=torch.float32).view(-1,1)
+
 
 
 X_data_tensor.requires_grad = True
@@ -141,7 +173,7 @@ try:
         
         # compute each term of the PINN loss function above
         # using the following hyperparameters:
-        lambda1 = 1e7
+        lambda1 = 1e4
         
         # compute physics loss
         physics_input = [X_physics_tensor,T_physics_tensor]
@@ -162,6 +194,7 @@ try:
         writer.add_scalar('loss1',loss1,i)
         # writer.add_scalar('loss12',loss12,i)
         
+
         # compute data loss
         # TODO: write code here
         data_input = [X_data_tensor,T_data_tensor]
@@ -174,10 +207,20 @@ try:
         writer.add_scalar('loss2',loss2,i)
         # writer.add_scalar('loss22',loss22,i)
 
+
+        #Initial Condition
+        physics_input = [X_ic_tensor,T_ic_tensor]
+        physic_output = pinn(physics_input)
+        physic_output1 = physic_output[:, 0].view(-1, 1)
+        physic_output2 = physic_output[:, 1].view(-1, 1)
+        loss3 = torch.mean((physic_output1-np.sin(0.5*np.pi*X_ic_tensor))**2+(physic_output2-np.sin(0.5*np.pi*X_ic_tensor))**2)
+        writer.add_scalar('loss3',loss3,i)
+
+
         # backpropagate joint loss, take optimiser step
         # loss1 = loss11 + lambda1*loss21
         # loss2 = loss12 + lambda1*loss22
-        loss = loss1 + lambda1*loss2
+        loss = loss1 + lambda1*(loss2+loss3)
         loss.backward()
         optimiser.step()
         
@@ -213,7 +256,7 @@ except KeyboardInterrupt:
 
 
         
-torch.save(pinn,"./model/00540502.pkl.")
+torch.save(pinn,"./model/18010502.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
@@ -261,7 +304,7 @@ plt.show()
 plt.figure()
 plt.title("gamma_2")
 plt.plot(gams2, label="PINN estimate")
-plt.hlines(12.5, 0, len(gams2), label="True value", color="tab:green")
+plt.hlines(0, 0, len(gams2), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
