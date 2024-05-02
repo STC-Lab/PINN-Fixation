@@ -53,9 +53,11 @@ def plot3D(X, T, y):
 #17260426.pkl  3matrix_2-5_3-6_4-7.mat
 #16420430.pkl  3.5-5.5_6.7-0_8.5-0.mat
 #18430430.pkl  3.5-5.5_6.7-4.7_8.5-0.mat
-model = torch.load('E:\yhy_files\graduation\code\PINN1.0\model/18430430.pkl')       
+#12010502.pkl  3.5-5.5_8.5-0.mat
+#18010502.pkl  3.5-5.5_8.5-12.5.mat
+model = torch.load('E:\yhy_files\graduation\code\PINN1.0\model/18010502.pkl')       
 
-file = './dataset/3.5-5.5_6.7-4.7_8.5-0.mat'
+file = './dataset/3.5-5.5_8.5-12.5.mat'
 x,t,u1,u2 = dataprocessing.load_matrix(file)
 X,T,U1,U2 = dataprocessing.matrix_totensor(x,t,u1,u2)
 X_test,T_test,U1_test,U2_test = dataprocessing.reshape_matrix(X,T,U1,U2)
@@ -69,6 +71,8 @@ u2 = output[:, 1].view(-1, 1).flatten()
 u1 = u1.resize(128,64)
 u2 = u2.resize(128,64)
 
+np.savetxt('u1.csv', u1.detach().numpy(), delimiter=',')
+np.savetxt('u2.csv', u2.detach().numpy(), delimiter=',')
 # plot3D(X,T,u1)
 
 fig = plt.figure()
