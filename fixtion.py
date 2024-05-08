@@ -136,7 +136,7 @@ alps24 =[]
 
 # add mu to the optimiser
 # TODO: write code here
-optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha],lr=0.01)
+optimiser = torch.optim.Adam(list(pinn.parameters())+alpha,lr=0.01)
 writer = SummaryWriter()
 
 theta = 0.01
@@ -146,8 +146,8 @@ i = 0
 time_start = time.time()
 
 try:
-    # while loss > theta:
-    for i in range(40001):
+    while loss > theta:
+    # for i in range(40001):
         
         optimiser.zero_grad()
         
@@ -158,19 +158,25 @@ try:
         # compute physics loss
         physics_input = [X_physics_tensor,T_physics_tensor]
         physic_output = pinn(physics_input)
-        physic_output1 = physic_output[:, 0].view(-1, 1)
-        physic_output2 = physic_output[:, 1].view(-1, 1)
+        physic_output_Te = physic_output[:, 0].view(-1, 1)
+        physic_output_Mo = physic_output[:, 1].view(-1, 1)
 
-        dTedt = torch.autograd.grad(physic_output1, T_physics_tensor, torch.ones_like(physic_output1), create_graph=True)[0]
-        dModt = torch.autograd.grad(physic_output2, T_physics_tensor, torch.ones_like(physic_output2), create_graph=True)[0]
-        du1dx = torch.autograd.grad(physic_output1, X_physics_tensor, torch.ones_like(physic_output1), create_graph=True)[0]
-        du2dx = torch.autograd.grad(physic_output2, X_physics_tensor, torch.ones_like(physic_output2), create_graph=True)[0]
-        d2u1dx2 = torch.autograd.grad(du1dx, X_physics_tensor, torch.ones_like(du1dx), create_graph=True)[0]
-        d2u2dx2 = torch.autograd.grad(du2dx, X_physics_tensor, torch.ones_like(du2dx), create_graph=True)[0]
+        dTedt = torch.autograd.grad(physic_output_Te, T_physics_tensor, torch.ones_like(physic_output_Te), create_graph=True)[0]
+        dModt = torch.autograd.grad(physic_output_Mo, T_physics_tensor, torch.ones_like(physic_output_Mo), create_graph=True)[0]
+        dTedx = torch.autograd.grad(physic_output_Te, X_physics_tensor, torch.ones_like(physic_output_Te), create_graph=True)[0]
+        dModx = torch.autograd.grad(physic_output_Mo, X_physics_tensor, torch.ones_like(physic_output_Mo), create_graph=True)[0]
+        d2Tedx2 = torch.autograd.grad(dTedx, X_physics_tensor, torch.ones_like(dTedx), create_graph=True)[0]
+        d2Modx2 = torch.autograd.grad(dModx, X_physics_tensor, torch.ones_like(dModx), create_graph=True)[0]
+        loss1 = (alpha[0][0][0]*d2Tedx2+alpha[0][0][1]*d2Modx2-dTedt)**2+(alpha[0][1][0]*d2Tedx2+alpha[0][1][1]*d2Modx2-dTedt)**2
+        if index > 1:
+            for j in range(1,index):
+                # loss1 = loss1+ (alpha[i][2*i][2*i]*d2Tedx2+alpha[i][2*i][2*i+1]*d2Modx2-dTedt)**2+(alpha[i][2*i+1][2*i]*d2Tedx2+alpha[i][2*i+1][2*i+1]*d2Modx2-dTedt)**2
+                loss1 = loss1+ (alpha[j][0][0]*d2Tedx2+alpha[j][0][1]*d2Modx2-dTedt)**2+(alpha[j][1][0]*d2Tedx2+alpha[j][1][1]*d2Modx2-dTedt)**2
         # loss1 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2+(alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
-        loss1 = torch.mean((alpha[0]*d2u1dx2+gamma[0]*physic_output1-du1dt)**2+(alpha[1]*d2u2dx2+gamma[1]*physic_output1-du2dt)**2)
+        # loss1 = torch.mean((alpha[0]*d2u1dx2+gamma[0]*physic_output1-du1dt)**2+(alpha[1]*d2u2dx2+gamma[1]*physic_output1-du2dt)**2)
         # loss11 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2)
         # loss12 = torch.mean((alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
+        loss1 = torch.mean(loss1)
         writer.add_scalar('loss1',loss1,i)
         # writer.add_scalar('loss12',loss12,i)
         
@@ -179,38 +185,38 @@ try:
         # TODO: write code here
         data_input = [X_data_tensor,T_data_tensor]
         data_output = pinn(data_input)
-        data_output1 = data_output[:, 0].view(-1, 1)
-        data_output2 = data_output[:, 1].view(-1, 1)
-        loss2 = torch.mean((U1_data_tensor - data_output1)**2+(U2_data_tensor-data_output2)**2)
+        data_output_Te = data_output[:, 0].view(-1, 1)
+        data_output_Mo = data_output[:, 1].view(-1, 1)
+        loss2 = torch.mean((Te_data_tensor - data_output_Te)**2+(Mo_data_tensor-data_output_Mo)**2)
         # loss21 = torch.mean((U1_data_tensor - data_output1)**2)
         # loss22 = torch.mean((U2_data_tensor-data_output2)**2)
         writer.add_scalar('loss2',loss2,i)
         # writer.add_scalar('loss22',loss22,i)
 
 
-        #Initial Condition
-        ic_input = [X_ic_tensor,T_ic_tensor]
-        ic_output = pinn(ic_input)
-        ic_output1 = ic_output[:, 0].view(-1, 1)
-        ic_output2 = ic_output[:, 1].view(-1, 1)
-        loss3 = torch.mean((ic_output1-np.sin(0.5*np.pi*X_ic_tensor))**2+(ic_output2-np.sin(0.5*np.pi*X_ic_tensor))**2)
-        writer.add_scalar('loss3',loss3,i)
+        # #Initial Condition
+        # ic_input = [X_ic_tensor,T_ic_tensor]
+        # ic_output = pinn(ic_input)
+        # ic_output1 = ic_output[:, 0].view(-1, 1)
+        # ic_output2 = ic_output[:, 1].view(-1, 1)
+        # loss3 = torch.mean((ic_output1-np.sin(0.5*np.pi*X_ic_tensor))**2+(ic_output2-np.sin(0.5*np.pi*X_ic_tensor))**2)
+        # writer.add_scalar('loss3',loss3,i)
 
 
-        #Boundry Condition
-        bc_input_left = [X_bc_left_tensor,T_bc_tensor]
-        bc_output_left = pinn(bc_input_left)
-        bc_left_output1 = bc_output_left[:, 0].view(-1, 1)
-        bc_left_output2 = bc_output_left[:, 1].view(-1, 1)
-        bc_input_right = [X_bc_right_tensor,T_bc_tensor]
-        bc_output_right = pinn(bc_input_right)
-        bc_right_output1 = bc_output_right[:, 0].view(-1, 1)
-        bc_right_output2 = bc_output_right[:, 1].view(-1, 1)
-        du2dx_bc = torch.autograd.grad(bc_left_output1, X_bc_left_tensor, torch.ones_like(bc_left_output1), create_graph=True)[0]
-        du1dx_bc = torch.autograd.grad(bc_right_output2, X_bc_right_tensor, torch.ones_like(bc_right_output2), create_graph=True)[0]
+        # #Boundry Condition
+        # bc_input_left = [X_bc_left_tensor,T_bc_tensor]
+        # bc_output_left = pinn(bc_input_left)
+        # bc_left_output1 = bc_output_left[:, 0].view(-1, 1)
+        # bc_left_output2 = bc_output_left[:, 1].view(-1, 1)
+        # bc_input_right = [X_bc_right_tensor,T_bc_tensor]
+        # bc_output_right = pinn(bc_input_right)
+        # bc_right_output1 = bc_output_right[:, 0].view(-1, 1)
+        # bc_right_output2 = bc_output_right[:, 1].view(-1, 1)
+        # du2dx_bc = torch.autograd.grad(bc_left_output1, X_bc_left_tensor, torch.ones_like(bc_left_output1), create_graph=True)[0]
+        # du1dx_bc = torch.autograd.grad(bc_right_output2, X_bc_right_tensor, torch.ones_like(bc_right_output2), create_graph=True)[0]
 
-        loss4 = torch.mean((bc_left_output2)**2)+torch.mean((bc_right_output1-1)**2)+torch.mean((du2dx_bc)**2)+torch.mean((du1dx_bc)**2)
-        writer.add_scalar('loss4',loss4,i)
+        # loss4 = torch.mean((bc_left_output2)**2)+torch.mean((bc_right_output1-1)**2)+torch.mean((du2dx_bc)**2)+torch.mean((du1dx_bc)**2)
+        # writer.add_scalar('loss4',loss4,i)
 
         
 
@@ -218,25 +224,30 @@ try:
         # backpropagate joint loss, take optimiser step
         # loss1 = loss11 + lambda1*loss21
         # loss2 = loss12 + lambda1*loss22
-        loss = loss1 + lambda1*(loss2+loss3+loss4)
+        loss = loss1 + lambda1*loss2
         loss.backward()
         optimiser.step()
         
         # record mu value
         # TODO: write code here
-        alps1.append(alpha[0].item())
-        alps2.append(alpha[1].item())
-        # bets1.append(beta[0].item())
-        # bets2.append(beta[1].item())
-        gams1.append(gamma[0].item())
-        gams2.append(gamma[1].item())
+        alps11.append(alpha[0][0][0].item())
+        alps12.append(alpha[0][0][1].item())
+        alps13.append(alpha[0][1][0].item())
+        alps14.append(alpha[0][1][1].item())
+        alps21.append(alpha[1][0][0].item())
+        alps22.append(alpha[1][0][1].item())
+        alps23.append(alpha[1][1][0].item())
+        alps24.append(alpha[1][1][1].item())
         writer.add_scalar('train_loss',loss,i)
-        writer.add_scalar('alpha1',alpha[0],i)
-        writer.add_scalar('alpha2',alpha[1],i)
-        # writer.add_scalar('beta1',beta[0],i)
-        # writer.add_scalar('beta2',beta[1],i)
-        writer.add_scalar('gamma1',gamma[0],i)
-        writer.add_scalar('gamma2',gamma[1],i)
+        writer.add_scalar('alpha11',alpha[0][0][0],i)
+        writer.add_scalar('alpha12',alpha[0][0][1],i)
+        writer.add_scalar('alpha13',alpha[0][1][0],i)
+        writer.add_scalar('alpha14',alpha[0][1][1],i)
+        writer.add_scalar('alpha21',alpha[1][0][0],i)
+        writer.add_scalar('alpha22',alpha[1][0][1],i)
+        writer.add_scalar('alpha23',alpha[1][1][0],i)
+        writer.add_scalar('alpha24',alpha[1][1][1],i)
+
         # plot the result as training progresses
         if i % 500 == 0: 
             # u = pinn(t_test).detach()
@@ -247,70 +258,78 @@ try:
             # plt.legend()
             # plt.show()
             # print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},beta:{beta[0].item(),beta[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
-             print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
-        # i = i+1
+             print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0],alpha[1]}' )
+        i = i+1
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
 
         
-torch.save(pinn,"./model/21470502.pkl.")
+torch.save(pinn,"./model/13560502.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
         
 plt.figure()
-plt.title("alpha_1")
-plt.plot(alps1, label="PINN estimate")
-plt.hlines(3.5, 0, len(alps1), label="True value", color="tab:green")
+plt.title("alpha_11")
+plt.plot(alps11, label="PINN estimate")
+plt.hlines(5, 0, len(alps11), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
 
 plt.figure()
-plt.title("alpha_2")
-plt.plot(alps2, label="PINN estimate")
-plt.hlines(5.5, 0, len(alps2), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
-
-# plt.figure()
-# plt.title("beta_1")
-# plt.plot(bets1, label="PINN estimate")
-# plt.hlines(4.7, 0, len(bets1), label="True value", color="tab:green")
-# plt.legend()
-# plt.xlabel("Training step")
-# plt.show()
-
-# plt.figure()
-# plt.title("beta_2")
-# plt.plot(bets2, label="PINN estimate")
-# plt.hlines(4.7, 0, len(bets2), label="True value", color="tab:green")
-# plt.legend()
-# plt.xlabel("Training step")
-# plt.show()
-
-plt.figure()
-plt.title("gamma_1")
-plt.plot(gams1, label="PINN estimate")
-plt.hlines(8.5, 0, len(gams1), label="True value", color="tab:green")
+plt.title("alpha_12")
+plt.plot(alps12, label="PINN estimate")
+plt.hlines(0.1, 0, len(alps12), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
 
 plt.figure()
-plt.title("gamma_2")
-plt.plot(gams2, label="PINN estimate")
-plt.hlines(12.5, 0, len(gams2), label="True value", color="tab:green")
+plt.title("alpha_13")
+plt.plot(alps13, label="PINN estimate")
+plt.hlines(0.2, 0, len(alps13), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
 
-# plt.figure()
-# plt.title("gamma")
-# plt.plot(gams, label="PINN estimate")
-# plt.hlines(8.5, 0, len(gams), label="True value", color="tab:green")
-# plt.legend()
-# plt.xlabel("Training step")
-# plt.show()
+plt.figure()
+plt.title("alpha_14")
+plt.plot(alps14, label="PINN estimate")
+plt.hlines(3, 0, len(alps14), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("alpha_21")
+plt.plot(alps21, label="PINN estimate")
+plt.hlines(3, 0, len(alps21), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("alpha_22")
+plt.plot(alps22, label="PINN estimate")
+plt.hlines(0.2, 0, len(alps22), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("alpha_23")
+plt.plot(alps23, label="PINN estimate")
+plt.hlines(0.5, 0, len(alps23), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("alpha_24")
+plt.plot(alps24, label="PINN estimate")
+plt.hlines(4, 0, len(alps24), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
