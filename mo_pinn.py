@@ -34,34 +34,34 @@ class FCN(nn.Module):
         return x
     
 
-class FCN_2output(nn.Module):
-    "Defines a standard fully-connected network in PyTorch"
+# class FCN_2output(nn.Module):
+#     "Defines a standard fully-connected network in PyTorch"
     
-    def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
-        super().__init__()
-        activation = nn.Tanh
-        self.fcs = nn.Sequential(*[
-                        nn.Linear(N_INPUT, N_HIDDEN),
-                        activation()])
-        self.fch = nn.Sequential(*[
-                        nn.Sequential(*[
-                            nn.Linear(N_HIDDEN, N_HIDDEN),
-                            activation()]) for _ in range(N_LAYERS-1)])
-        self.fce1 = nn.Linear(N_HIDDEN, N_OUTPUT)
-        self.fce2 = nn.Linear(N_HIDDEN, N_OUTPUT)
+#     def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
+#         super().__init__()
+#         activation = nn.Tanh
+#         self.fcs = nn.Sequential(*[
+#                         nn.Linear(N_INPUT, N_HIDDEN),
+#                         activation()])
+#         self.fch = nn.Sequential(*[
+#                         nn.Sequential(*[
+#                             nn.Linear(N_HIDDEN, N_HIDDEN),
+#                             activation()]) for _ in range(N_LAYERS-1)])
+#         self.fce1 = nn.Linear(N_HIDDEN, N_OUTPUT)
+#         self.fce2 = nn.Linear(N_HIDDEN, N_OUTPUT)
 
-    def forward(self, input):
-        x = torch.cat(input, dim=-1)
-        x = self.fcs(x)
-        x = self.fch(x)
-        u1 = self.fce1(x)
-        u2 = self.fce2(x)
-        return u1,u2
+#     def forward(self, input):
+#         x = torch.cat(input, dim=-1)
+#         x = self.fcs(x)
+#         x = self.fch(x)
+#         u1 = self.fce1(x)
+#         u2 = self.fce2(x)
+#         return u1,u2
     
 
 torch.manual_seed(1234)
 # first, create some noisy observational data
-file = './dataset/1.5-2.3_3.5-1.2-1.8-3.2.mat'
+file = './dataset/3-1.1-2.7-1.5_1.2-2.5-3.5-1.5.mat'
 x,t,u1,u2 = dataprocessing.load_matrix(file)
 X,T,U1,U2 = dataprocessing.matrix_totensor(x,t,u1,u2)
 X_test,T_test,U1_test,U2_test = dataprocessing.reshape_matrix(X,T,U1,U2)
@@ -138,7 +138,8 @@ pinn = FCN(2,2,32,2)
 
 alpha = torch.nn.Parameter(torch.randn(2, 2), requires_grad=True)
 # beta = torch.nn.Parameter(torch.randn(2), requires_grad=True)
-gamma = torch.nn.Parameter(torch.randn(2,2), requires_grad=True)
+# gamma = torch.nn.Parameter(torch.randn(2,2), requires_grad=True)
+mu = torch.nn.Parameter(torch.randn(2,2), requires_grad=True)
 
 # alpha1 = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
 # beta1 = torch.nn.Parameter(torch.tensor(1.0),requires_grad=True)
@@ -157,14 +158,18 @@ gams1 = []
 gams2 = []
 gams3 = []
 gams4 = []
+mus1 = []
+mus2 = []
+mus3 = []
+mus4 = []
 
 
 # add mu to the optimiser
 # TODO: write code here
-optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[gamma],lr=0.001)
+optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[mu],lr=0.001)
 writer = SummaryWriter()
 
-theta = 0.01
+theta = 0.05
 loss = 1
 i = 0
 
@@ -193,7 +198,10 @@ try:
         d2u1dx2 = torch.autograd.grad(du1dx, X_physics_tensor, torch.ones_like(du1dx), create_graph=True)[0]
         d2u2dx2 = torch.autograd.grad(du2dx, X_physics_tensor, torch.ones_like(du2dx), create_graph=True)[0]
         # loss1 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2+(alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
-        loss1 = torch.mean((alpha[0][0]*d2u1dx2+alpha[0][1]*d2u2dx2+gamma[0][0]*physic_output1+gamma[0][1]*physic_output2-du1dt)**2+(alpha[1][0]*d2u1dx2+alpha[1][1]*d2u2dx2+gamma[1][0]*physic_output1+gamma[1][1]*physic_output2-du2dt)**2)
+        #loss1 = torch.mean((alpha[0][0]*d2u1dx2+alpha[0][1]*d2u2dx2+gamma[0][0]*physic_output1+gamma[0][1]*physic_output2-du1dt)**2+(alpha[1][0]*d2u1dx2+alpha[1][1]*d2u2dx2+gamma[1][0]*physic_output1+gamma[1][1]*physic_output2-du2dt)**2)
+        # loss1 = torch.mean((alpha[0][0]*d2u1dx2+alpha[0][1]*d2u2dx2+mu[0][0]*du1dx+mu[0][1]*du2dx+gamma[0][0]*physic_output1+gamma[0][1]*physic_output2-du1dt)**2
+        #                    +(alpha[1][0]*d2u1dx2+alpha[1][1]*d2u2dx2+mu[1][0]*du1dx+mu[1][1]*du2dx+gamma[1][0]*physic_output1+gamma[1][1]*physic_output2-du2dt)**2)
+        loss1 = torch.mean((alpha[0][0]*d2u1dx2+alpha[0][1]*d2u2dx2+mu[0][0]*du1dx+mu[0][1]*du2dx-du1dt)**2+(alpha[1][0]*d2u1dx2+alpha[1][1]*d2u2dx2+mu[1][0]*du1dx+mu[1][1]*du2dx-du2dt)**2)
         # loss11 = torch.mean((alpha1*d2u1dx2+beta1*du1dx+gamma1*physic_output1-du1dt)**2)
         # loss12 = torch.mean((alpha2*d2u2dx2+beta2*du2dx+gamma2*physic_output2-du2dt)**2)
         writer.add_scalar('loss1',loss1,i)
@@ -213,7 +221,7 @@ try:
         # writer.add_scalar('loss22',loss22,i)
 
 
-        # #Initial Condition
+        #Initial Condition
         # ic_input = [X_ic_tensor,T_ic_tensor]
         # ic_output = pinn(ic_input)
         # ic_output1 = ic_output[:, 0].view(-1, 1)
@@ -222,7 +230,7 @@ try:
         # writer.add_scalar('loss3',loss3,i)
 
 
-        # #Boundry Condition
+        #Boundry Condition
         # bc_input_left = [X_bc_left_tensor,T_bc_tensor]
         # bc_output_left = pinn(bc_input_left)
         # bc_left_output1 = bc_output_left[:, 0].view(-1, 1)
@@ -256,10 +264,15 @@ try:
         alps4.append(alpha[1][1].item())
         # bets1.append(beta[0].item())
         # bets2.append(beta[1].item())
-        gams1.append(gamma[0][0].item())
-        gams2.append(gamma[0][1].item())
-        gams3.append(gamma[1][0].item())
-        gams4.append(gamma[1][1].item())
+        # gams1.append(gamma[0][0].item())
+        # gams2.append(gamma[0][1].item())
+        # gams3.append(gamma[1][0].item())
+        # gams4.append(gamma[1][1].item())
+        
+        mus1.append(mu[0][0].item())
+        mus2.append(mu[0][1].item())
+        mus3.append(mu[1][0].item())
+        mus4.append(mu[1][1].item())
         writer.add_scalar('train_loss',loss,i)
         # writer.add_scalar('alpha1',alpha[0],i)
         # writer.add_scalar('alpha2',alpha[1],i)
@@ -277,14 +290,14 @@ try:
             # plt.legend()
             # plt.show()
             # print(f'epoch: {i}  train loss :{loss}, alpha: {alpha[0].item(),alpha[1].item()},beta:{beta[0].item(),beta[1].item()},gamma:{gamma[0].item(),gamma[1].item()}' )
-             print(f'epoch: {i}  train loss :{loss}, alpha: {alpha},gamma:{gamma}' )
+             print(f'epoch: {i}  train loss :{loss}, alpha: {alpha},mu:{mu}' )
         i = i+1
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
 
         
-torch.save(pinn,"./model/19400520.pkl.")
+torch.save(pinn,"./model/01052205.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
@@ -292,7 +305,7 @@ print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
 plt.figure()
 plt.title("alpha_00")
 plt.plot(alps1, label="PINN estimate")
-plt.hlines(1.5, 0, len(alps1), label="True value", color="tab:green")
+plt.hlines(3, 0, len(alps1), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
@@ -300,7 +313,7 @@ plt.show()
 plt.figure()
 plt.title("alpha_01")
 plt.plot(alps2, label="PINN estimate")
-plt.hlines(0, 0, len(alps2), label="True value", color="tab:green")
+plt.hlines(1.1, 0, len(alps2), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
@@ -308,7 +321,7 @@ plt.show()
 plt.figure()
 plt.title("alpha_10")
 plt.plot(alps3, label="PINN estimate")
-plt.hlines(0, 0, len(alps3), label="True value", color="tab:green")
+plt.hlines(2.7, 0, len(alps3), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
@@ -316,62 +329,78 @@ plt.show()
 plt.figure()
 plt.title("alpha_11")
 plt.plot(alps4, label="PINN estimate")
-plt.hlines(2.3, 0, len(alps4), label="True value", color="tab:green")
+plt.hlines(1.5, 0, len(alps4), label="True value", color="tab:green")
 plt.legend()
 plt.xlabel("Training step")
 plt.show()
 
+#Gamma 
+###############################
+###########################################################3
 # plt.figure()
-# plt.title("beta_1")
-# plt.plot(bets1, label="PINN estimate")
-# plt.hlines(4.7, 0, len(bets1), label="True value", color="tab:green")
+# plt.title("gamma_00")
+# plt.plot(gams1, label="PINN estimate")
+# plt.hlines(2, 0, len(gams1), label="True value", color="tab:green")
 # plt.legend()
 # plt.xlabel("Training step")
 # plt.show()
 
 # plt.figure()
-# plt.title("beta_2")
-# plt.plot(bets2, label="PINN estimate")
-# plt.hlines(4.7, 0, len(bets2), label="True value", color="tab:green")
+# plt.title("gamma_01")
+# plt.plot(gams2, label="PINN estimate")
+# plt.hlines(1.8, 0, len(gams2), label="True value", color="tab:green")
 # plt.legend()
 # plt.xlabel("Training step")
 # plt.show()
 
-plt.figure()
-plt.title("gamma_00")
-plt.plot(gams1, label="PINN estimate")
-plt.hlines(3.5, 0, len(gams1), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
-
-plt.figure()
-plt.title("gamma_01")
-plt.plot(gams2, label="PINN estimate")
-plt.hlines(1.2, 0, len(gams2), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
-
-plt.figure()
-plt.title("gamma_10")
-plt.plot(gams3, label="PINN estimate")
-plt.hlines(1.8, 0, len(gams3), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
-
-plt.figure()
-plt.title("gamma_11")
-plt.plot(gams4, label="PINN estimate")
-plt.hlines(3.2, 0, len(gams4), label="True value", color="tab:green")
-plt.legend()
-plt.xlabel("Training step")
-plt.show()
 # plt.figure()
-# plt.title("gamma")
-# plt.plot(gams, label="PINN estimate")
-# plt.hlines(8.5, 0, len(gams), label="True value", color="tab:green")
+# plt.title("gamma_10")
+# plt.plot(gams3, label="PINN estimate")
+# plt.hlines(1.2, 0, len(gams3), label="True value", color="tab:green")
 # plt.legend()
 # plt.xlabel("Training step")
 # plt.show()
+
+# plt.figure()
+# plt.title("gamma_11")
+# plt.plot(gams4, label="PINN estimate")
+# plt.hlines(2.5, 0, len(gams4), label="True value", color="tab:green")
+# plt.legend()
+# plt.xlabel("Training step")
+# plt.show()
+
+
+#mu
+###################################################
+############################################################################3
+plt.figure()
+plt.title("mu_00")
+plt.plot(mus1, label="PINN estimate")
+plt.hlines(1.2, 0, len(mus1), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("mu_01")
+plt.plot(mus2, label="PINN estimate")
+plt.hlines(2.5, 0, len(mus2), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("mu_10")
+plt.plot(mus3, label="PINN estimate")
+plt.hlines(3.5, 0, len(mus3), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
+
+plt.figure()
+plt.title("mu_11")
+plt.plot(mus4, label="PINN estimate")
+plt.hlines(1.5, 0, len(mus4), label="True value", color="tab:green")
+plt.legend()
+plt.xlabel("Training step")
+plt.show()
