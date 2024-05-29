@@ -85,7 +85,7 @@ torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset/sd_pinn1.mat'
+file = './dataset/sd_pinn2.mat'
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
@@ -143,14 +143,16 @@ T_physics_tensor.requires_grad = True
 
 # define a neural network to train
 pinn = FCN(2,1,32,2)
-fx = FNet(1,1,16,1)
-gx = GNet(1,1,16,1)
+fx = FNet(1,1,128,3)
+gx = GNet(1,1,128,3)
 
 
 # add mu to the optimiser
 # TODO: write code here
 # optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
-optimiser = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-3)
+# optimiser = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-3)
+optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
+optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
 writer = SummaryWriter()
 
 theta = 0.01
@@ -162,7 +164,8 @@ time_start = time.time()
 try:
     while loss > theta:
         
-        optimiser.zero_grad()
+        optimiser1.zero_grad()
+        optimiser2.zero_grad()
         
         # compute each term of the PINN loss function above
         # using the following hyperparameters:
@@ -187,7 +190,8 @@ try:
         # backpropagate joint loss, take optimiser step
         loss = loss1 + lambda1*loss2
         loss.backward(retain_graph=True)
-        optimiser.step()
+        optimiser1.step()
+        optimiser2.step()
         
         # record mu value
         # TODO: write code here
@@ -228,9 +232,9 @@ try:
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
-torch.save(pinn,"./sd_model/PINN_16480522.pkl.")
-torch.save(fx,"./sd_model/FX_16480522.pkl.")
-torch.save(gx,"./sd_model/GX_16480522.pkl.")
+torch.save(pinn,"./sd_model/PINN_23130527.pkl.")
+torch.save(fx,"./sd_model/FX_23130527.pkl.")
+torch.save(gx,"./sd_model/GX_23130527.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
