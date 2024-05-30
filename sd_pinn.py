@@ -85,7 +85,7 @@ torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset/sd_pinn2.mat'
+file = './dataset/sd_pinn_inverse.mat'
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
@@ -143,8 +143,8 @@ T_physics_tensor.requires_grad = True
 
 # define a neural network to train
 pinn = FCN(2,1,32,2)
-fx = FNet(1,1,128,3)
-gx = GNet(1,1,128,3)
+fx = FNet(1,1,32,3)
+gx = GNet(1,1,32,3)
 
 
 # add mu to the optimiser
@@ -232,9 +232,9 @@ try:
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
-torch.save(pinn,"./sd_model/PINN_23130527.pkl.")
-torch.save(fx,"./sd_model/FX_23130527.pkl.")
-torch.save(gx,"./sd_model/GX_23130527.pkl.")
+torch.save(pinn,"./sd_model/PINN_13100530.pkl.")
+torch.save(fx,"./sd_model/FX_13100530.pkl.")
+torch.save(gx,"./sd_model/GX_13100530.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
