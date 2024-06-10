@@ -85,7 +85,7 @@ torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset/sd_pinn2.mat'
+file = './dataset/sd_pinn_symmetry.mat'
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
@@ -155,7 +155,7 @@ optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
 optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
 writer = SummaryWriter()
 
-theta = 0.005
+theta = 0.001
 loss = 1
 i = 0
 
@@ -181,8 +181,8 @@ try:
         # loss1 = torch.mean((alpha*d2udx2+beta*dudx+gamma*physic_output-dudt)**2)
         co_f = fx(X_physics_tensor)
         co_g = gx(X_physics_tensor)
-        #loss1 = torch.mean((co_f*d2udx2+co_g*dudx-dudt)**2)
-        loss1 = torch.mean(abs(co_f*d2udx2+co_g*dudx-dudt))
+        loss1 = torch.mean((co_f*d2udx2+co_g*dudx-dudt)**2)
+        #loss1 = torch.mean(abs(co_f*d2udx2+co_g*dudx-dudt))
         # compute data loss
         # TODO: write code here
         data_input = [X_data_tensor,T_data_tensor]
@@ -234,9 +234,9 @@ try:
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
-torch.save(pinn,"./sd_model/PINN_20110531.pkl.")
-torch.save(fx,"./sd_model/FX_20110531.pkl.")
-torch.save(gx,"./sd_model/GX_20110531.pkl.")
+torch.save(pinn,"./sd_model/PINN_13090607.pkl.")
+torch.save(fx,"./sd_model/FX_13090607.pkl.")
+torch.save(gx,"./sd_model/GX_13090607.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
