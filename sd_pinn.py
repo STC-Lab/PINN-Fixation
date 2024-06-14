@@ -8,6 +8,7 @@ from scipy.io import loadmat
 import dataprocessing
 import time
 from pyDOE import lhs
+import torch.optim as optim
 
 
 
@@ -85,7 +86,7 @@ torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset/sd_pinn_symmetry.mat'
+file = './dataset/sd_pinn_sinx.mat'
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
@@ -101,7 +102,7 @@ X_data_tensor,T_data_tensor,U_data_tensor = dataprocessing.select_data(total_poi
 
 #Add Latin hyper cube sampling
 num_samples = 90
-parameter_ranges = np.array([[-5, 5], [0, 100]])
+parameter_ranges = np.array([[-1, 1], [0, 1]])
 samples = lhs(2, samples=num_samples, criterion='maximin', iterations=1000)
 for i in range(2):
     samples[:, i] = samples[:, i] * (parameter_ranges[i, 1] - parameter_ranges[i, 0]) + parameter_ranges[i, 0]
@@ -117,6 +118,20 @@ T_data_tensor.requires_grad = True
 U_data_tensor.requires_grad = True
 X_physics_tensor.requires_grad = True
 T_physics_tensor.requires_grad = True
+
+#IC
+T_zero = np.zeros(90)
+X_ic,T_ic = np.meshgrid(x_samples,T_zero)
+X_ic_tensor = torch.tensor(X_ic, dtype=torch.float32).view(-1,1)
+T_ic_tensor = torch.tensor(T_ic, dtype=torch.float32).view(-1,1)
+#BC
+X_zero = np.zeros(90)
+X_one = np.ones(90)
+X_bc_left,T_bc = np.meshgrid(X_zero,t_samples)
+X_bc_left_tensor = torch.tensor(X_bc_left, dtype=torch.float32).view(-1,1)
+T_bc_tensor = torch.tensor(T_bc, dtype=torch.float32).view(-1,1)
+X_bc_right,T_bc = np.meshgrid(X_zero,t_samples)
+X_bc_right_tensor = torch.tensor(X_bc_right, dtype=torch.float32).view(-1,1)
 
 #Make Validation Set
 # Nf_val = 500      #Num of validation set
@@ -142,7 +157,7 @@ T_physics_tensor.requires_grad = True
 
 
 # define a neural network to train
-pinn = FCN(2,1,32,2)
+pinn = FCN(2,1,32,3)
 fx = FNet(1,1,32,3)
 gx = GNet(1,1,32,3)
 
@@ -150,24 +165,27 @@ gx = GNet(1,1,32,3)
 # add mu to the optimiser
 # TODO: write code here
 # optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
-# optimiser = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-3)
-optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
-optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
+optimizer = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-2)
+# optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
+# optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
 writer = SummaryWriter()
 
 theta = 0.001
 loss = 1
 i = 0
 
+
+
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=20000, factor=0.1)
 # for i in range(30001):
 time_start = time.time()
 
 try:
     while loss > theta:
         
-        optimiser1.zero_grad()
-        optimiser2.zero_grad()
-        
+        # optimiser1.zero_grad()
+        # optimiser2.zero_grad()
+        optimizer.zero_grad()
         # compute each term of the PINN loss function above
         # using the following hyperparameters:
         lambda1 = 1e4
@@ -181,20 +199,47 @@ try:
         # loss1 = torch.mean((alpha*d2udx2+beta*dudx+gamma*physic_output-dudt)**2)
         co_f = fx(X_physics_tensor)
         co_g = gx(X_physics_tensor)
-        loss1 = torch.mean((co_f*d2udx2+co_g*dudx-dudt)**2)
-        #loss1 = torch.mean(abs(co_f*d2udx2+co_g*dudx-dudt))
+        #loss1 = torch.mean((co_f*d2udx2+co_g*dudx-dudt)**2)
+        loss1 = torch.mean(abs(co_f*d2udx2+co_g*dudx-dudt))
         # compute data loss
         # TODO: write code here
         data_input = [X_data_tensor,T_data_tensor]
         data_output = pinn(data_input)
         loss2 = torch.mean((U_data_tensor - data_output)**2)
+
+
+        #Boundry Condition
+        bc_input_left = [X_bc_left_tensor,T_bc_tensor]
+        bc_output_left = pinn(bc_input_left)
+        bc_left_output = bc_output_left[:, 0].view(-1, 1)
+        bc_input_right = [X_bc_right_tensor,T_bc_tensor]
+        bc_output_right = pinn(bc_input_right)
+        bc_right_output = bc_output_right[:, 0].view(-1, 1)
+        loss4 = torch.mean(bc_left_output)**2+torch.mean(bc_right_output)**2
+        writer.add_scalar('loss4',loss4,i)
+
+
         
         # backpropagate joint loss, take optimiser step
-        loss = loss1 + lambda1*loss2
+        loss = loss1+ lambda1*(loss2+loss4)
         loss.backward(retain_graph=True)
-        optimiser1.step()
-        optimiser2.step()
-        
+        # optimiser1.step()
+        # optimiser2.step()
+        optimizer.step()
+        scheduler.step(loss)
+
+        if scheduler.num_bad_epochs == scheduler.patience:
+            current_lr = optimizer.param_groups[0]['lr']
+            # torch.save({
+            #     'epoch': i,
+            #     'pinn': pinn,
+            #     'fx':fx,
+            #     'gx':gx,
+            #     'loss': loss.item(),
+            # }, f'model_epoch_{i + 1}_lr_{current_lr:.6f}.pth')
+            torch.save(pinn,f"./sheduled_model/PINN_16400611_{current_lr:.6f}.pkl")
+            torch.save(fx,f"./sheduled_model/PINN_16400611_{current_lr:.6f}.pkl")
+            torch.save(gx,f"./sheduled_model/PINN_16400611_{current_lr:.6f}.pkl")
         # record mu value
         # TODO: write code here
         writer.add_scalar('train_loss',loss,i)
@@ -234,9 +279,9 @@ try:
 except KeyboardInterrupt:
     print("Interrupted training loop.")
 
-torch.save(pinn,"./sd_model/PINN_13090607.pkl.")
-torch.save(fx,"./sd_model/FX_13090607.pkl.")
-torch.save(gx,"./sd_model/GX_13090607.pkl.")
+torch.save(pinn,"./sheduled_model/PINN_16400611.pkl.")
+torch.save(fx,"./sheduled_model/FX_16400611.pkl.")
+torch.save(gx,"./sheduled_model/GX_16400611.pkl.")
 time_end = time.time()
 time_sum = time_end - time_start
 print('训练时间 {:.0f}分 {:.0f}秒'.format(time_sum // 60, time_sum % 60))
