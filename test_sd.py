@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-
+import json
 
 class FNet(nn.Module):
     "Defines a standard fully-connected network in PyTorch"
@@ -52,13 +52,27 @@ class GNet(nn.Module):
         return x
     
 
-x_test = torch.tensor(np.linspace(-5, 5, 100).reshape(-1, 1), dtype=torch.float32)
+x_test = torch.tensor(np.linspace(0, 1, 100).reshape(-1, 1), dtype=torch.float32)
 
-model = torch.load('E:\yhy_files\graduation\code\PINN1.0\sd_model/FX_22200527.pkl')
+# model = torch.load('E:\yhy_files\graduation\code\Fixation\sd_model/FX_tanhx_newic_MAE_np5000_nd5000_0.001.pkl')
+model_fx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/FX_fixation_1to1.pkl')
+model_gx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/GX_fixation_1to1.pkl')
+# fx = model_fx(x_test)
+# gx = model_gx(x_test)
 
-fx = model(x_test)
-fx_true = 1+np.tanh(x_test)
+# data = {
+#     'fx': fx.detach().numpy().tolist(),
+#     # 'gx': gx.detach().numpy().tolist(),
+#     'x':x_test.tolist(),
+# }
 
+
+# with open('tanh_best.json',"w") as f:
+#     json.dump(data,f,indent=4)
+
+
+fx = model_fx(x_test)
+fx_true = x_test**2
 plt.figure(figsize=(8, 6))
 plt.plot(x_test, fx_true, label='f(x)')
 plt.plot(x_test, fx.detach().numpy(), label='prediction')
@@ -71,16 +85,15 @@ plt.show()
 
 
 
-# gx = model(x_test)
-# gx_true = 1-np.tanh(x_test)**2
-
-# plt.figure(figsize=(8, 6))
-# plt.plot(x_test, gx_true, label='g(x)')
-# plt.plot(x_test, gx.detach().numpy(), label='prediction')
-# plt.title("Comparision with the results")
-# plt.xlabel('$x$')
-# plt.ylabel('$g(x)$')
-# plt.grid(True)
-# plt.legend()
-# plt.show()
+gx = model_gx(x_test)
+gx_true = 2*x_test
+plt.figure(figsize=(8, 6))
+plt.plot(x_test, gx_true, label='g(x)')
+plt.plot(x_test, gx.detach().numpy(), label='prediction')
+plt.title("Comparision with the results")
+plt.xlabel('$x$')
+plt.ylabel('$g(x)$')
+plt.grid(True)
+plt.legend()
+plt.show()
 
