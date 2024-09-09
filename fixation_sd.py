@@ -137,36 +137,12 @@ T_data_tensor_val.requires_grad = True
 # X_bc_right,T_bc = np.meshgrid(X_zero,t_samples)
 # X_bc_right_tensor = torch.tensor(X_bc_right, dtype=torch.float32).view(-1,1)
 
-#Make Validation Set
-# Nf_val = 500      #Num of validation set
-# X_data_tensor_train,X_data_tensor_val = dataprocessing.split_data(X_data_tensor,Nf_val)
-# T_data_tensor_train,T_data_tensor_val = dataprocessing.split_data(T_data_tensor,Nf_val)
-# U_data_tensor_train,U_data_tensor_val = dataprocessing.split_data(U_data_tensor,Nf_val)
-# X_physics_tensor_train,X_physics_tensor_val = dataprocessing.split_data(X_physics_tensor,Nf_val)
-# T_physics_tensor_train,T_physics_tensor_val = dataprocessing.split_data(T_physics_tensor,Nf_val)
-# U_physics_tensor_train,U_physics_tensor_val = dataprocessing.split_data(U_physics_tensor,Nf_val)
-#plotdataphysics(X_data_tensor,T_data_tensor,X_physics_tensor,T_physics_tensor)
-
-
-# fig = plt.figure(figsize=(10, 8))
-# ax = fig.add_subplot(111, projection='3d')
-# surf = ax.plot_surface(X_data, T_data, U_data, cmap='viridis', edgecolor='none')
-# ax.scatter(X_data,T_data,U_data,color='red', label='Data Points')
-# fig.colorbar(surf, ax=ax, label='u(x, t)')
-# ax.set_title('Surface Plot of u(x, t)')
-# ax.set_xlabel('x')
-# ax.set_ylabel('t')
-# ax.set_zlabel('u(x, t)')
-# plt.show()
 
 
 # define a neural network to train
-# pinn = FCN(2,1,32,3)
-# fx = FNet(1,1,32,3)
-# gx = GNet(1,1,32,3)
-pinn = torch.load('E:\yhy_files\graduation\code\Fixation\sd_model/PINN_fixation_1to1_tanh.pkl')
-fx = torch.load('E:\yhy_files\graduation\code\Fixation\sd_model/FX_fixation_1to1_tanh.pkl')
-gx = torch.load('E:\yhy_files\graduation\code\Fixation\sd_model/GX_fixation_1to1_tanh.pkl')
+pinn = FCN(2,1,32,3)
+fx = FNet(1,1,32,3)
+gx = GNet(1,1,32,3)
 physicsloss = []
 dataloss = []
 totalloss = []
@@ -175,10 +151,7 @@ valloss = []
 
 # add mu to the optimiser
 # TODO: write code here
-# optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
 optimiser = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-4)
-# optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
-# optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
 writer = SummaryWriter()
 
 theta = 0.0001
@@ -240,15 +213,8 @@ try:
         optimiser.step()
         
         # record mu value
-        # TODO: write code here
-        # alps.append(alpha.item())
-        # bets.append(beta.item())
-        # gams.append(gamma.item())
         writer.add_scalar('train_loss',loss,i)
-        # writer.add_scalar('alpha',alpha.item(),i)
-        # writer.add_scalar('beta',beta.item(),i)
-        # writer.add_scalar('gamma',gamma.item(),i)
-        # plot the result as training progresses
+
 
         #The validation
         physics_input_val = [X_data_tensor_val,T_data_tensor_val]
@@ -274,14 +240,6 @@ try:
 
 
         if i % 500 == 0: 
-            # u = pinn(t_test).detach()
-            # plt.figure(figsize=(6,2.5))
-            # plt.scatter(t_obs[:,0], u_obs[:,0], label="Noisy observations", alpha=0.6)
-            # plt.plot(t_test[:,0], u[:,0], label="PINN solution", color="tab:green")
-            # plt.title(f"Training step {i}")
-            # plt.legend()
-            # plt.show()
-            # print(f'epoch: {i}  train loss :{loss} and validation loss:{loss_v}' )
             print(f'epoch: {i}  train loss :{loss} val loss:{loss_v}')
         i = i+1
 except KeyboardInterrupt:

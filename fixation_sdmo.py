@@ -127,9 +127,6 @@ T_data_tensor_val.requires_grad = True
 pinn = FCN(2,2,32,3)
 fx = FNet(1,4,64,3)
 gx = GNet(1,4,64,3)
-# pinn = torch.load('E:\yhy_files\graduation\code\Fixation\sdmo_model/PINN_solver_2to2_tanh_64_5_pretrained.pkl')
-# fx = torch.load('E:\yhy_files\graduation\code\Fixation\sdmo_model/FX_solver_2to2_tanh_64_5_pretrained.pkl')
-# gx = torch.load('E:\yhy_files\graduation\code\Fixation\sdmo_model/GX_solver_2to2_tanh_64_5_pretrained.pkl')
 physicsloss = []
 dataloss = []
 totalloss = []
@@ -138,10 +135,7 @@ valloss = []
 
 # add mu to the optimiser
 # TODO: write code here
-# optimiser = torch.optim.Adam(list(pinn.parameters())+[alpha]+[beta]+[gamma],lr=1e-3)
 optimiser = torch.optim.Adam(list(pinn.parameters())+list(fx.parameters())+list(gx.parameters()),lr=1e-3)
-# optimiser1 = torch.optim.Adam(list(pinn.parameters()),lr=1e-3)
-# optimiser2 = torch.optim.Adam(list(fx.parameters())+list(gx.parameters()),lr=0.001)
 writer = SummaryWriter()
 
 theta = 0.00001
@@ -160,8 +154,6 @@ try:
         
         optimiser.zero_grad()
         
-        # compute each term of the PINN loss function above
-        # using the following hyperparameters:
         lambda1 = 1e4
         
         # compute physics loss
@@ -210,15 +202,8 @@ try:
         optimiser.step()
         
         # record mu value
-        # TODO: write code here
-        # alps.append(alpha.item())
-        # bets.append(beta.item())
-        # gams.append(gamma.item())
         writer.add_scalar('train_loss',loss,i)
-        # writer.add_scalar('alpha',alpha.item(),i)
-        # writer.add_scalar('beta',beta.item(),i)
-        # writer.add_scalar('gamma',gamma.item(),i)
-        # plot the result as training progresses
+
 
         #The validation
         physics_input_val = [X_data_tensor_val,T_data_tensor_val]
@@ -253,14 +238,6 @@ try:
 
 
         if i % 500 == 0: 
-            # u = pinn(t_test).detach()
-            # plt.figure(figsize=(6,2.5))
-            # plt.scatter(t_obs[:,0], u_obs[:,0], label="Noisy observations", alpha=0.6)
-            # plt.plot(t_test[:,0], u[:,0], label="PINN solution", color="tab:green")
-            # plt.title(f"Training step {i}")
-            # plt.legend()
-            # plt.show()
-            # print(f'epoch: {i}  train loss :{loss} and validation loss:{loss_v}' )
             print(f'epoch: {i}  train loss :{loss} val loss:{loss_v}')
         i = i+1
 except KeyboardInterrupt:
