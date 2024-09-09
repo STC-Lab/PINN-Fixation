@@ -52,11 +52,11 @@ class GNet(nn.Module):
         return x
     
 
-x_test = torch.tensor(np.linspace(0, 1, 100).reshape(-1, 1), dtype=torch.float32)
+x_test = torch.tensor(np.linspace(-5, 5, 100).reshape(-1, 1), dtype=torch.float32)
 
 # model = torch.load('E:\yhy_files\graduation\code\Fixation\sd_model/FX_tanhx_newic_MAE_np5000_nd5000_0.001.pkl')
-model_fx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/FX_fixation_1to1.pkl')
-model_gx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/GX_fixation_1to1.pkl')
+model_fx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/FX_para_tanhx_32_3_0.001.pkl')
+model_gx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/GX_para_tanhx_32_3_0.001.pkl')
 # fx = model_fx(x_test)
 # gx = model_gx(x_test)
 
@@ -72,7 +72,8 @@ model_gx = torch.load('E:\yhy_files\graduation\code\PINN-Fixation\model/GX_fixat
 
 
 fx = model_fx(x_test)
-fx_true = x_test**2
+fx_true = 1.01+np.tanh(x_test)
+# fx_true = x_test**2
 plt.figure(figsize=(8, 6))
 plt.plot(x_test, fx_true, label='f(x)')
 plt.plot(x_test, fx.detach().numpy(), label='prediction')
@@ -86,7 +87,8 @@ plt.show()
 
 
 gx = model_gx(x_test)
-gx_true = 2*x_test
+# gx_true = 2*x_test
+gx_true = 1.01-np.tanh(x_test)**2
 plt.figure(figsize=(8, 6))
 plt.plot(x_test, gx_true, label='g(x)')
 plt.plot(x_test, gx.detach().numpy(), label='prediction')

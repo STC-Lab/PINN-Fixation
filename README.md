@@ -31,13 +31,20 @@ In MATLAB, there is the code of pde solver for single number or matrix parameter
 
 ## Example
 
-Here are the example model for test each netwrok. The coresponding dataset is in the file dataset.
+Here are the example model for test each netwrok. The coresponding dataset is in the file dataset. And the visualization results are in the file results. The trained models are in the file model. 
 
 single number parameters
+
 ![](graph/3para.png)
 
 matrix parameters
+
 ![](graph/3matrix.png)
 
-function parameters
-![](graph/1to1_sd.png)
+function parameters example 1
+
+![](graph/1to1_sd_example1.png)
+
+function parameters example 2
+
+![](graph/1to1_sd_example2.png)
