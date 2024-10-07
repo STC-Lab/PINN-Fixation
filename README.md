@@ -73,9 +73,18 @@ Write the physics loss function, depends on the model which generate the dataset
         loss1 = torch.mean((alpha*d2udx2+beta*dudx+gamma*physic_output-dudt)**2)
         physicsloss.append(loss1.item())
 ```
-If the parameters are matrix, the loss funxtion are defuned like this.Here, alpha is 2*2 trainable parameters 
+If the parameters are matrix, the loss funxtion are defuned like this.Here, alpha is 2*2 trainable parameters, so the network has two output.  
 ```
-loss1 = torch.mean((alpha[0][0]*d2u1dx2+alpha[0][1]*d2u2dx2+mu[0][0]*physic_output1+mu[0][1]*physic_output2-du1dt)**2+(alpha[1][0]*d2u1dx2+alpha[1][1]*d2u2dx2+mu[1][0]*physic_output1+mu[1][1]*physic_output2-du2dt)**2)
+        physics_input = [X_physics_tensor,T_physics_tensor]
+        physic_output = pinn(physics_input)
+        physic_output1 = physic_output[:, 0].view(-1, 1)
+        physic_output2 = physic_output[:, 1].view(-1, 1)
+        du1dt = torch.autograd.grad(physic_output1, T_physics_tensor, torch.ones_like(physic_output1), create_graph=True)[0]
+        du2dt = torch.autograd.grad(physic_output2, T_physics_tensor, torch.ones_like(physic_output2), create_graph=True)[0]
+        du1dx = torch.autograd.grad(physic_output1, X_physics_tensor, torch.ones_like(physic_output1), create_graph=True)[0]
+        du2dx = torch.autograd.grad(physic_output2, X_physics_tensor, torch.ones_like(physic_output2), create_graph=True)[0]
+        d2u1dx2 = torch.autograd.grad(du1dx, X_physics_tensor, torch.ones_like(du1dx), create_graph=True)[0]
+        d2u2dx2 = torch.autograd.grad(du2dx, X_physics_tensor, torch.ones_like(du2dx), create_graph=True)[0]
 ```
 
 Define the physics loss
