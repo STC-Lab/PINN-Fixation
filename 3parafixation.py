@@ -41,7 +41,9 @@ torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1231)
 # first, create some noisy observational data
-file = './dataset111/3para_x45_t100.mat'
+
+#Create data points
+file = './dataset111/3para_x45_t100.mat'        #The dataset includes x,t and u
 x,t,u = dataprocessing.load_data(file)
 X,T,U = dataprocessing.totensor(x,t,u)
 X_test,T_test,U_test = dataprocessing.reshape_data(X,T,U)
@@ -65,6 +67,7 @@ X_data_tensor_train,X_data_tensor_val,T_data_tensor_train,T_data_tensor_val,U_da
 
 
 #Add Latin hyper cube sampling
+#Create Physics points
 num_samples = 63
 parameter_ranges = np.array([[0, 2], [0,1]])
 samples = lhs(2, samples=num_samples, criterion='maximin', iterations=1000)
@@ -123,7 +126,7 @@ writer = SummaryWriter()
 
 
 early_stop_epochs = 6000
-theta = 0.0001
+theta = 0.0001           #The threshhold of loss, if loss less than theta,the training stop
 loss = 1
 i = 0
 epochs_no_improve = 0
